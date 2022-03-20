@@ -8,6 +8,8 @@ updates:
       - dependency-name: dependency-check
       - dependency-name: nyc
       - dependency-name: standard
+      # ESM-only
+      - dependency-name: tempy
   - package-ecosystem: github-actions
     directory: /
     schedule:
