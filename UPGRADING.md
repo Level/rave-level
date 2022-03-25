@@ -5,3 +5,5 @@ This document describes breaking changes and how to upgrade. For a complete list
 ## 1.0.0
 
 _WIP notes_
+
+Support of Node.js 10 has been dropped.
