@@ -1,10 +1,26 @@
+'use strict'
+
 const test = require('tape')
+const { once } = require('events')
+const tempy = require('tempy')
 const level = require('..')
-const path = require('path')
-const tmpdir = require('osenv').tmpdir()
-const datadir = path.join(tmpdir, 'level-party-' + Math.random())
+
+test('basic failover', async function (t) {
+  const location = tempy.directory()
+  const db1 = level(location)
+  await once(db1, 'leader')
+
+  const db2 = level(location)
+  const values = new Array(100).fill(0).map((_, i) => String(i))
+  const promises = values.map(v => db2.put(v.padStart(3, '0'), v))
+
+  await Promise.all([db1.close(), once(db2, 'leader'), ...promises])
+
+  t.same(await db2.values().all(), values)
+})
 
 test('failover election party', function (t) {
+  const datadir = tempy.directory()
   const keys = ['a', 'b', 'c', 'e', 'f', 'g']
   const len = keys.length
   t.plan(len * (len + 1) / 2)

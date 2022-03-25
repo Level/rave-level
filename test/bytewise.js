@@ -1,14 +1,15 @@
+'use strict'
+
 const test = require('tape')
-const level = require('..')
-const path = require('path')
 const bytewise = require('bytewise')
-const tmpdir = require('osenv').tmpdir()
-const datadir = path.join(tmpdir, 'level-party-' + Math.random())
+const datadir = require('tempy').directory()
+const level = require('..')
 
 const lopts = { keyEncoding: bytewise, valueEncoding: 'json' }
 
 test('bytewise key encoding', function (t) {
   t.plan(7)
+
   const adb = level(datadir, lopts)
   const bdb = level(datadir, lopts)
   const value = Math.floor(Math.random() * 100000)
@@ -18,20 +19,21 @@ test('bytewise key encoding', function (t) {
 
     bdb.get(['a'], function (err, x) {
       t.ifError(err)
-      t.equal(x, value)
+      t.is(x, value)
     })
 
-    adb.createReadStream().on('data', function (row) {
-      t.deepEqual(row.key, ['a'])
-      t.deepEqual(row.value, value)
+    adb.iterator().all(function (err, entries) {
+      t.ifError(err)
+      t.same(entries, [[['a'], value]], 'a got correct entries')
     })
-    bdb.createReadStream().on('data', function (row) {
-      t.deepEqual(row.key, ['a'])
-      t.deepEqual(row.value, value)
+    bdb.iterator().all(function (err, entries) {
+      t.ifError(err)
+      t.same(entries, [[['a'], value]], 'b got correct entries')
     })
   })
 
   t.on('end', function () {
+    // TODO: await
     adb.close()
     bdb.close()
   })

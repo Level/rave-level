@@ -22,8 +22,9 @@
     "CHANGELOG.md"
   ],
   "dependencies": {
-    "level": "^7.0.1",
-    "multileveldown": "^5.0.1",
+    "level": "^8.0.0",
+    "many-level": "^1.0.1",
+    "module-error": "^1.0.2",
     "readable-stream": "^3.6.0"
   },
   "devDependencies": {
@@ -31,10 +32,9 @@
     "dependency-check": "^4.1.0",
     "hallmark": "^4.1.0",
     "nyc": "^15.1.0",
-    "osenv": "~0.1.0",
     "standard": "^16.0.3",
-    "subleveldown": "^6.0.1",
-    "tape": "^5.0.1"
+    "tape": "^5.0.1",
+    "tempy": "^1.0.1"
   },
   "repository": {
     "type": "git",

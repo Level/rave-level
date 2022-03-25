@@ -1,7 +1,7 @@
 # level-party
 
 Open a leveldb handle multiple times, transparently upgrading to use
-[`multileveldown`](https://npmjs.org/package/multileveldown) when more than 1 process try to use the same leveldb data directory at once and re-electing a new master when the primary unix socket goes down.
+[`many-level`](https://github.com/Level/many-level) when more than 1 process try to use the same leveldb data directory at once and re-electing a new master when the primary unix socket goes down.
 
 [![level badge][level-badge]](https://github.com/Level/awesome)
 [![npm](https://img.shields.io/npm/v/level-party.svg)](https://www.npmjs.com/package/level-party)
@@ -101,7 +101,7 @@ const db = level('./data', { retry: false }) // will not retry streams / gets / 
 
 ### `db = level(...)`
 
-The arguments are exactly the same as [`level`](https://npmjs.org/package/level). You will sometimes get a real leveldb handle and sometimes get a `multileveldown` handle back in the response.
+The arguments are exactly the same as [`level`](https://npmjs.org/package/level). You will sometimes get a real leveldb handle and sometimes get a `many-level` handle back in the response.
 
 ## Install
 

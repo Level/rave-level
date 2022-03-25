@@ -1,17 +1,18 @@
+'use strict'
+
+// TODO: rename file
+
 const test = require('tape')
 const level = require('..')
-const path = require('path')
-const sub = require('subleveldown')
-const tmpdir = require('osenv').tmpdir()
-const datadir = path.join(tmpdir, 'level-party-' + Math.random())
+const datadir = require('tempy').directory()
 
-test('subleveldown on level-party', function (t) {
+test('sublevel on rave-level', function (t) {
   t.plan(9)
 
   const a = level(datadir)
   const b = level(datadir)
-  const asub = sub(a, 'test', { valueEncoding: 'json' })
-  const bsub = sub(b, 'test')
+  const asub = a.sublevel('test', { valueEncoding: 'json' })
+  const bsub = b.sublevel('test')
   const obj = { test: Math.floor(Math.random() * 100000) }
 
   asub.put('a', obj, function (err) {
@@ -19,23 +20,24 @@ test('subleveldown on level-party', function (t) {
 
     asub.get('a', function (err, value) {
       t.ifError(err)
-      t.deepEqual(value, obj)
+      t.same(value, obj)
     })
     bsub.get('a', function (err, value) {
       t.ifError(err)
-      t.deepEqual(value, JSON.stringify(obj))
+      t.same(value, JSON.stringify(obj))
     })
-    asub.createReadStream().on('data', function (row) {
-      t.deepEqual(row.key, 'a')
-      t.deepEqual(row.value, obj)
+    asub.iterator().all(function (err, entries) {
+      t.ifError(err)
+      t.same(entries, [['a', obj]])
     })
-    bsub.createReadStream().on('data', function (row) {
-      t.deepEqual(row.key, 'a')
-      t.deepEqual(row.value, JSON.stringify(obj))
+    bsub.iterator().all(function (err, entries) {
+      t.ifError(err)
+      t.same(entries, [['a', JSON.stringify(obj)]])
     })
   })
 
   t.on('end', function () {
+    // TODO: await
     a.close()
     b.close()
   })

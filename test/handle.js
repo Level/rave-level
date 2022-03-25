@@ -1,8 +1,8 @@
+'use strict'
+
 const test = require('tape')
 const level = require('..')
-const path = require('path')
-const tmpdir = require('osenv').tmpdir()
-const datadir = path.join(tmpdir, 'level-party-' + Math.random())
+const datadir = require('tempy').directory()
 
 test('two handles', function (t) {
   t.plan(1)

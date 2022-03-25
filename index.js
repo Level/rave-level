@@ -1,122 +1,143 @@
 'use strict'
 
-const level = require('level')
+const { Level } = require('level')
 const { pipeline: pump } = require('readable-stream')
+const { ManyLevelHost, ManyLevelGuest } = require('many-level')
+const ModuleError = require('module-error')
 const fs = require('fs')
 const net = require('net')
 const path = require('path')
-const multileveldown = require('multileveldown')
 
-module.exports = function (dir, opts = {}) {
+module.exports = function (location, options) {
   const sockPath = process.platform === 'win32'
-    ? '\\\\.\\pipe\\level-party\\' + path.resolve(dir)
-    : path.join(dir, 'level-party.sock')
+    ? '\\\\.\\pipe\\rave-level\\' + path.resolve(location)
+    : path.join(location, 'rave-level.sock')
 
-  opts = { retry: true, ...opts }
+  // Create guest database as our public interface
+  const guest = new ManyLevelGuest({ retry: true, ...options })
 
-  const client = multileveldown.client(opts)
-
-  client.open(tryConnect)
-
-  function tryConnect () {
-    if (!client.isOpen()) {
+  guest.open(function tryConnect () {
+    // Check database status every step of the way
+    if (guest.status !== 'open') {
       return
     }
 
+    // Attempt to connect to leader as follower
     const socket = net.connect(sockPath)
+
+    // Track whether we succeeded to connect
     let connected = false
+    const onconnect = () => { connected = true }
+    socket.once('connect', onconnect)
 
-    socket.on('connect', function () {
-      connected = true
-    })
+    // Pass socket as the ref option so we don't hang the event loop.
+    pump(socket, guest.createRpcStream({ ref: socket }), socket, function () {
+      // Disconnected. Cleanup events
+      socket.removeListener('connect', onconnect)
 
-    // Pass socket as the ref option so we dont hang the event loop.
-    pump(socket, client.createRpcStream({ ref: socket }), socket, function () {
-      // TODO: err?
-
-      if (!client.isOpen()) {
+      if (guest.status !== 'open') {
         return
       }
 
-      const db = level(dir, opts, onopen)
+      // Attempt to open db as leader
+      const db = new Level(location, options)
 
-      function onopen (err) {
-        if (err) {
+      db.open(function (err) {
+        // If already locked, another process became the leader
+        if (err && err.cause && err.cause.code === 'LEVEL_LOCKED') {
           // TODO: This can cause an invisible retry loop that never completes
           // and leads to memory leaks.
-          // TODO: What errors should be retried?
           if (connected) {
-            tryConnect()
+            return tryConnect()
           } else {
-            setTimeout(tryConnect, 100)
+            return setTimeout(tryConnect, 100)
           }
-          return
+        } else if (err) {
+          return error(err)
         }
 
+        // We're the leader now
         fs.unlink(sockPath, function (err) {
+          if (guest.status !== 'open') {
+            return
+          }
+
           if (err && err.code !== 'ENOENT') {
-            // TODO: Is this how to forward errors?
-            db.emit('error', err)
-            return
+            return error(err)
           }
 
-          if (!client.isOpen()) {
-            return
-          }
-
+          // Create host to expose db
+          const host = new ManyLevelHost(db)
           const sockets = new Set()
-          const server = net.createServer(function (sock) {
-            if (sock.unref) {
-              sock.unref()
-            }
 
+          // Start server for followers
+          const server = net.createServer(function (sock) {
+            sock.unref()
             sockets.add(sock)
-            pump(sock, multileveldown.server(db), sock, function () {
-              // TODO: err?
+
+            pump(sock, host.createRpcStream(), sock, function () {
               sockets.delete(sock)
             })
           })
 
-          client.close = shutdown
-          client.emit('leader')
-          client.forward(db)
+          // When guest db is closed, close server and db.
+          // TODO: wait until listening?
+          guest.attachResource({ close: shutdown })
+          guest.attachResource(db)
+
+          // Bypass socket
+          // TODO: changes order of operations, because we only later flush previous operations (below)
+          guest.forward(db)
+          guest.emit('leader')
+
+          // Edge case if a 'leader' event listener closes the db
+          if (guest.status !== 'open') {
+            return
+          }
 
           server.listen(sockPath, onlistening)
-            .on('error', function () {
-              // TODO: Is this how to forward errors?
-              // TODO: tryConnect()?
-              db.emit('error', err)
-            })
+          server.on('error', error)
 
           function shutdown (cb) {
             for (const sock of sockets) {
               sock.destroy()
             }
-            server.close(() => {
-              db.close(cb)
-            })
+
+            server.removeListener('error', error)
+            server.close(cb)
           }
 
           function onlistening () {
-            if (server.unref) {
-              server.unref()
-            }
-            if (client.isFlushed()) {
+            server.unref()
+
+            if (guest.status !== 'open' || guest.isFlushed()) {
               return
             }
 
+            // Connect to ourselves to flush pending requests
             const sock = net.connect(sockPath)
-            pump(sock, client.createRpcStream(), sock, function () {
-              // TODO: err?
+            const onflush = () => { sock.destroy() }
+
+            pump(sock, guest.createRpcStream(), sock, function (err) {
+              guest.removeListener('flush', onflush)
+
+              // Socket should only close because of a guest.close()
+              if (!guest.isFlushed() && guest.status === 'open') {
+                error(new ModuleError('Did not flush', { cause: err }))
+              }
             })
-            client.once('flush', function () {
-              sock.destroy()
-            })
+
+            guest.once('flush', onflush)
           }
         })
-      }
+      })
     })
+  })
+
+  function error (err) {
+    // TODO: close?
+    guest.emit('error', err)
   }
 
-  return client
+  return guest
 }
