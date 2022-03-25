@@ -1,6 +1,6 @@
 {
-  "name": "level-party",
-  "version": "5.1.1",
+  "name": "rave-level",
+  "version": "0.0.0",
   "description": "Open a leveldb handle multiple times",
   "license": "MIT",
   "main": "index.js",
@@ -17,9 +17,9 @@
     "prepublishOnly": "npm run dependency-check"
   },
   "files": [
-    "example",
     "index.js",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "UPGRADING.md"
   ],
   "dependencies": {
     "level": "^8.0.0",
@@ -38,9 +38,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Level/party.git"
+    "url": "https://github.com/Level/rave-level.git"
   },
-  "homepage": "https://github.com/Level/party",
+  "homepage": "https://github.com/Level/rave-level",
   "keywords": [
     "level",
     "leveldb",

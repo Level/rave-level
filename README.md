@@ -1,13 +1,13 @@
-# level-party
+# rave-level
 
 Open a leveldb handle multiple times, transparently upgrading to use
 [`many-level`](https://github.com/Level/many-level) when more than 1 process try to use the same leveldb data directory at once and re-electing a new master when the primary unix socket goes down.
 
 [![level badge][level-badge]](https://github.com/Level/awesome)
-[![npm](https://img.shields.io/npm/v/level-party.svg)](https://www.npmjs.com/package/level-party)
-[![Node version](https://img.shields.io/node/v/level-party.svg)](https://www.npmjs.com/package/level-party)
-[![Test](https://img.shields.io/github/workflow/status/Level/party/Test?label=test)](https://github.com/Level/party/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/codecov/c/github/Level/party?label=&logo=codecov&logoColor=fff)](https://codecov.io/gh/Level/party)
+[![npm](https://img.shields.io/npm/v/rave-level.svg)](https://www.npmjs.com/package/rave-level)
+[![Node version](https://img.shields.io/node/v/rave-level.svg)](https://www.npmjs.com/package/rave-level)
+[![Test](https://img.shields.io/github/workflow/status/Level/rave-level/Test?label=test)](https://github.com/Level/rave-level/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/codecov/c/github/Level/rave-level?label=&logo=codecov&logoColor=fff)](https://codecov.io/gh/Level/rave-level)
 [![Standard](https://img.shields.io/badge/standard-informational?logo=javascript&logoColor=fff)](https://standardjs.com)
 [![Common Changelog](https://common-changelog.org/badge.svg)](https://common-changelog.org)
 [![Donate](https://img.shields.io/badge/donate-orange?logo=open-collective&logoColor=fff)](https://opencollective.com/level)
@@ -21,18 +21,18 @@ a database handle from more than one process you will get a locking error:
 events.js:72
         throw er; // Unhandled 'error' event
               ^
-OpenError: IO error: lock /home/substack/projects/level-party/example/data/LOCK: Resource temporarily unavailable
-    at /home/substack/projects/level-party/node_modules/level/node_modules/level-packager/node_modules/levelup/lib/levelup.js:114:34
+OpenError: IO error: lock /home/substack/projects/rave-level/example/data/LOCK: Resource temporarily unavailable
+    at /home/substack/projects/rave-level/node_modules/level/node_modules/level-packager/node_modules/levelup/lib/levelup.js:114:34
 ```
 
-With `level-party`, the database open will automatically drop down to using
+With `rave-level`, the database open will automatically drop down to using
 multilevel over a unix socket using metadata placed into the level data
 directory transparently.
 
 This means that if you have 2 programs, 1 that gets:
 
 ```js
-const level = require('level-party')
+const level = require('rave-level')
 const db = level(__dirname + '/data', { valueEncoding: 'json' })
 
 setInterval(function () {
@@ -45,7 +45,7 @@ setInterval(function () {
 And 1 that puts:
 
 ```js
-const level = require('level-party')
+const level = require('rave-level')
 const db = level(__dirname + '/data', { valueEncoding: 'json' })
 
 const n = Math.floor(Math.random() * 100000)
@@ -84,10 +84,10 @@ Hooray!
 
 ## Seamless failover
 
-level-party does seamless failover. This means that if you create a read-stream
-and the leader goes down while you are reading that stream level-party will resume your stream on the new leader.
+rave-level does seamless failover. This means that if you create a read-stream
+and the leader goes down while you are reading that stream rave-level will resume your stream on the new leader.
 
-[**This disables leveldb snapshotting**](https://github.com/level/leveldown#snapshots) so if your app relies on this you should disable this by setting `opts.retry = false`:
+This disables [snapshot guarantees](https://github.com/Level/abstract-level#iterator) so if your app relies on this you should disable this by setting `opts.retry = false`:
 
 ```js
 const db = level('./data', { retry: false }) // will not retry streams / gets / puts if the leader goes down
@@ -95,7 +95,7 @@ const db = level('./data', { retry: false }) // will not retry streams / gets / 
 
 ## Windows support
 
-`level-party` works on Windows as well using named pipes.
+`rave-level` works on Windows as well using named pipes.
 
 ## API
 
@@ -108,12 +108,12 @@ The arguments are exactly the same as [`level`](https://npmjs.org/package/level)
 With [npm](https://npmjs.org) do:
 
 ```
-npm install level-party
+npm install rave-level
 ```
 
 ## Contributing
 
-[`Level/party`](https://github.com/Level/party) is an **OPEN Open Source Project**. This means that:
+[`Level/rave-level`](https://github.com/Level/rave-level) is an **OPEN Open Source Project**. This means that:
 
 > Individuals making significant and valuable contributions are given commit-access to the project to contribute as they see fit. This project is more like an open wiki than a standard guarded open source project.
 
