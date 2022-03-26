@@ -2,31 +2,30 @@
 
 const test = require('tape')
 const bytewise = require('bytewise')
-const datadir = require('tempy').directory()
+const tempy = require('tempy')
 const level = require('..')
-
-const lopts = { keyEncoding: bytewise, valueEncoding: 'json' }
 
 test('bytewise key encoding', function (t) {
   t.plan(7)
 
-  const adb = level(datadir, lopts)
-  const bdb = level(datadir, lopts)
+  const location = tempy.directory()
+  const db1 = level(location, { keyEncoding: bytewise, valueEncoding: 'json' })
+  const db2 = level(location, { keyEncoding: bytewise, valueEncoding: 'json' })
   const value = Math.floor(Math.random() * 100000)
 
-  adb.put(['a'], value, function (err) {
+  db1.put(['a'], value, function (err) {
     t.ifError(err)
 
-    bdb.get(['a'], function (err, x) {
+    db2.get(['a'], function (err, x) {
       t.ifError(err)
       t.is(x, value)
     })
 
-    adb.iterator().all(function (err, entries) {
+    db1.iterator().all(function (err, entries) {
       t.ifError(err)
       t.same(entries, [[['a'], value]], 'a got correct entries')
     })
-    bdb.iterator().all(function (err, entries) {
+    db2.iterator().all(function (err, entries) {
       t.ifError(err)
       t.same(entries, [[['a'], value]], 'b got correct entries')
     })
@@ -34,7 +33,7 @@ test('bytewise key encoding', function (t) {
 
   t.on('end', function () {
     // TODO: await
-    adb.close()
-    bdb.close()
+    db1.close()
+    db2.close()
   })
 })

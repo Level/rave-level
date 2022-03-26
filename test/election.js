@@ -20,12 +20,12 @@ test('basic failover', async function (t) {
 })
 
 test('failover election party', function (t) {
-  const datadir = tempy.directory()
+  const location = tempy.directory()
   const keys = ['a', 'b', 'c', 'e', 'f', 'g']
   const len = keys.length
   t.plan(len * (len + 1) / 2)
   let pending = keys.length
-  const handles = {}
+  const databases = {}
 
   keys.forEach(function (key) {
     const h = open(key)
@@ -35,7 +35,7 @@ test('failover election party', function (t) {
   })
 
   function open (key) {
-    const h = handles[key] = level(datadir, { valueEncoding: 'json' })
+    const h = databases[key] = level(location, { valueEncoding: 'json' })
     return h
   }
 
@@ -46,7 +46,7 @@ test('failover election party', function (t) {
 
       check(alive, function () {
         const key = alive.shift()
-        handles[key].close()
+        databases[key].close()
         next()
       })
     })()
@@ -58,9 +58,9 @@ test('failover election party', function (t) {
     for (let i = 0; i < keys.length; i++) {
       (function (a, b) {
         const value = Math.random()
-        handles[a].put(a, value, function (err) {
+        databases[a].put(a, value, function (err) {
           if (err) t.fail(err)
-          handles[b].get(a, function (err, x) {
+          databases[b].get(a, function (err, x) {
             if (err) t.fail(err)
             t.equal(x, value)
             if (--pending === 0) cb()

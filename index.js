@@ -1,7 +1,7 @@
 'use strict'
 
 const { Level } = require('level')
-const { pipeline: pump } = require('readable-stream')
+const { pipeline } = require('readable-stream')
 const { ManyLevelHost, ManyLevelGuest } = require('many-level')
 const ModuleError = require('module-error')
 const fs = require('fs')
@@ -31,7 +31,7 @@ module.exports = function (location, options) {
     socket.once('connect', onconnect)
 
     // Pass socket as the ref option so we don't hang the event loop.
-    pump(socket, guest.createRpcStream({ ref: socket }), socket, function () {
+    pipeline(socket, guest.createRpcStream({ ref: socket }), socket, function () {
       // Disconnected. Cleanup events
       socket.removeListener('connect', onconnect)
 
@@ -75,7 +75,7 @@ module.exports = function (location, options) {
             sock.unref()
             sockets.add(sock)
 
-            pump(sock, host.createRpcStream(), sock, function () {
+            pipeline(sock, host.createRpcStream(), sock, function () {
               sockets.delete(sock)
             })
           })
@@ -118,7 +118,7 @@ module.exports = function (location, options) {
             const sock = net.connect(sockPath)
             const onflush = () => { sock.destroy() }
 
-            pump(sock, guest.createRpcStream(), sock, function (err) {
+            pipeline(sock, guest.createRpcStream(), sock, function (err) {
               guest.removeListener('flush', onflush)
 
               // Socket should only close because of a guest.close()
