@@ -1,6 +1,6 @@
 'use strict'
 
-const { Level } = require('level')
+const { ClassicLevel } = require('classic-level')
 const { pipeline } = require('readable-stream')
 const { ManyLevelHost, ManyLevelGuest } = require('many-level')
 const ModuleError = require('module-error')
@@ -16,11 +16,17 @@ const kDestroy = Symbol('destroy')
 
 exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
   constructor (location, options = {}) {
-    super({ retry: true, ...options })
+    const { keyEncoding, valueEncoding, retry } = options
+
+    super({
+      keyEncoding,
+      valueEncoding,
+      retry: retry !== false
+    })
 
     this[kLocation] = path.resolve(location)
     this[kSocketPath] = socketPath(this[kLocation])
-    this[kOptions] = options
+    this[kOptions] = { keyEncoding, valueEncoding }
     this[kConnect] = this[kConnect].bind(this)
     this[kDestroy] = this[kDestroy].bind(this)
 
@@ -51,7 +57,7 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
       }
 
       // Attempt to open db as leader
-      const db = new Level(this[kLocation], this[kOptions])
+      const db = new ClassicLevel(this[kLocation], this[kOptions])
 
       // TODO: refactor to unnest functions
       db.open((err) => {

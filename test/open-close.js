@@ -61,13 +61,3 @@ test('immediate close', function (t) {
 
   return db.close()
 })
-
-test('failure to open', function (t) {
-  t.plan(1)
-
-  const db = new RaveLevel(tempy.directory(), { createIfMissing: false })
-
-  db.once('error', function (err) {
-    t.is(err.code, 'LEVEL_DATABASE_NOT_OPEN')
-  })
-})

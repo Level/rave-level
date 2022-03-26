@@ -1,5 +1,4 @@
-import { ManyLevelGuest } from 'many-level'
-import { AbstractDatabaseOptions } from 'abstract-level'
+import { AbstractLevel, AbstractDatabaseOptions } from 'abstract-level'
 
 /**
  * Use a [LevelDB](https://github.com/google/leveldb) database from multiple processes
@@ -9,7 +8,7 @@ import { AbstractDatabaseOptions } from 'abstract-level'
  * @template VDefault The default type of values if not overridden on operations.
  */
 export class RaveLevel<KDefault = string, VDefault = string>
-  extends ManyLevelGuest<KDefault, VDefault> {
+  extends AbstractLevel<Buffer, KDefault, VDefault> {
   /**
    * Database constructor.
    *
@@ -26,7 +25,8 @@ export class RaveLevel<KDefault = string, VDefault = string>
 /**
  * Options for the {@link RaveLevel} constructor.
  */
-declare interface DatabaseOptions<K, V> extends AbstractDatabaseOptions<K, V> {
+declare interface DatabaseOptions<K, V> extends
+  Omit<AbstractDatabaseOptions<K, V>, 'createIfMissing' | 'errorIfExists'> {
   /**
    * If true, operations are retried upon connecting to a new leader. If false,
    * operations are aborted upon disconnect, which means to yield an error on e.g.

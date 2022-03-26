@@ -1,6 +1,6 @@
 # rave-level
 
-**Use a LevelDB database from multiple processes with seamless failover.** Normally with [`level`](https://github.com/Level/level) opening the same location more than once would result in a [`LEVEL_LOCKED`](https://github.com/Level/abstract-level#errors) error. With `rave-level` the first process that succeeds in taking the LevelDB lock becomes the "leader" and creates a [`many-level`](https://github.com/Level/many-level) host to which other processes connect over a unix socket (Linux and Mac) or named pipe (Windows), transparently electing a new leader when it goes down. Pending database operations are then retried and iterators resumed at the last visited key as if nothing happened.
+**Use a LevelDB database from multiple processes with seamless failover.** Normally with [`classic-level`](https://github.com/Level/classic-level) opening the same location more than once would result in a [`LEVEL_LOCKED`](https://github.com/Level/abstract-level#errors) error. With `rave-level` the first process that succeeds in taking the LevelDB lock becomes the "leader" and creates a [`many-level`](https://github.com/Level/many-level) host to which other processes connect over a unix socket (Linux and Mac) or named pipe (Windows), transparently electing a new leader when it goes down. Pending database operations are then retried and iterators resumed at the last visited key as if nothing happened.
 
 > :pushpin: Which module should I use? What happened to [`level-party`](https://github.com/Level/party)? Head over to the [FAQ](https://github.com/Level/community#faq).
 
@@ -24,15 +24,17 @@ const db = new RaveLevel('./db')
 
 ### `db = new RaveLevel(location[, options])`
 
-The arguments are the same as [`level`](https://github.com/Level/level) (v8.0.0 and above) as is the API of the returned database, making `rave-level` a drop-in replacement for `level` for when you need to read and write to the given `location` from multiple processes simultaneously. It has one additional option:
+The `location` argument is the same as in [`classic-level`](https://github.com/Level/classic-level), making `rave-level` a drop-in replacement for when you need to read and write to the given `location` from multiple processes simultaneously. However, the `options` are different and limited because not every `RaveLevel` instance has direct access to the underlying LevelDB database. The `options` object may contain:
 
-- `retry` (boolean, default `true`): if true, operations are retried upon connecting to a new leader. The `db` cannot provide [snapshot guarantees](https://github.com/Level/abstract-level#iterator) in this case because new iterators (and thus snapshots) will be created by the leader. If false, operations are aborted upon disconnect, which means to yield an error on e.g. `db.get()`.
+- `keyEncoding` (string or object, default `'utf8'`): [encoding](https://github.com/Level/abstract-level#encodings) to use for keys
+- `valueEncoding` (string or object, default `'utf8'`): encoding to use for values
+- `retry` (boolean, default `true`): if true, operations are retried upon connecting to a new leader. The `db` does not have [snapshot guarantees](https://github.com/Level/abstract-level#iterator) in this case because new iterators and thus snapshots may be created by the leader. If false, operations are aborted upon disconnect, which means to yield an error on e.g. `db.get()`.
 
-The database opens itself but (unlike `level`) cannot be re-opened once `db.close()` has been called. Calling `db.open()` would then yield a [`LEVEL_NOT_SUPPORTED`](https://github.com/Level/abstract-level#errors) error. Closing the database or exiting the process triggers re-election in other processes.
+The `RaveLevel` class extends `AbstractLevel` and thus follows the public API of [`abstract-level`](https://github.com/Level/abstract-level). As such, the rest of the API is documented in `abstract-level`. The database opens itself but (unlike other `abstract-level` implementations) cannot be re-opened once `db.close()` has been called. Calling `db.open()` would then yield a [`LEVEL_NOT_SUPPORTED`](https://github.com/Level/abstract-level#errors) error.
 
 ### Events
 
-A database will only emit [events](https://github.com/Level/abstract-level#events) that are the result of its own operations (rather than other processes). There's one additional event, emitted when `db` has been elected as the leader:
+A `rave-level` database will only emit [events](https://github.com/Level/abstract-level#events) that are the result of its own operations (rather than other processes). There's one additional event, emitted when `db` has been elected as the leader:
 
 ```js
 db.on('leader', function () {
