@@ -8,22 +8,33 @@ const fs = require('fs')
 const net = require('net')
 const path = require('path')
 
-module.exports = function (location, options) {
-  const sockPath = process.platform === 'win32'
-    ? '\\\\.\\pipe\\rave-level\\' + path.resolve(location)
-    : path.join(location, 'rave-level.sock')
+const kLocation = Symbol('location')
+const kSocketPath = Symbol('socketPath')
+const kOptions = Symbol('options')
+const kConnect = Symbol('connect')
+const kDestroy = Symbol('destroy')
 
-  // Create guest database as our public interface
-  const guest = new ManyLevelGuest({ retry: true, ...options })
+exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
+  constructor (location, options = {}) {
+    super({ retry: true, ...options })
 
-  guest.open(function tryConnect () {
+    this[kLocation] = path.resolve(location)
+    this[kSocketPath] = socketPath(this[kLocation])
+    this[kOptions] = options
+    this[kConnect] = this[kConnect].bind(this)
+    this[kDestroy] = this[kDestroy].bind(this)
+
+    this.open(this[kConnect])
+  }
+
+  [kConnect] () {
     // Check database status every step of the way
-    if (guest.status !== 'open') {
+    if (this.status !== 'open') {
       return
     }
 
     // Attempt to connect to leader as follower
-    const socket = net.connect(sockPath)
+    const socket = net.connect(this[kSocketPath])
 
     // Track whether we succeeded to connect
     let connected = false
@@ -31,43 +42,45 @@ module.exports = function (location, options) {
     socket.once('connect', onconnect)
 
     // Pass socket as the ref option so we don't hang the event loop.
-    pipeline(socket, guest.createRpcStream({ ref: socket }), socket, function () {
+    pipeline(socket, this.createRpcStream({ ref: socket }), socket, () => {
       // Disconnected. Cleanup events
       socket.removeListener('connect', onconnect)
 
-      if (guest.status !== 'open') {
+      if (this.status !== 'open') {
         return
       }
 
       // Attempt to open db as leader
-      const db = new Level(location, options)
+      const db = new Level(this[kLocation], this[kOptions])
 
-      db.open(function (err) {
+      // TODO: refactor to unnest functions
+      db.open((err) => {
         // If already locked, another process became the leader
         if (err && err.cause && err.cause.code === 'LEVEL_LOCKED') {
           // TODO: This can cause an invisible retry loop that never completes
           // and leads to memory leaks.
           if (connected) {
-            return tryConnect()
+            return this[kConnect]()
           } else {
-            return setTimeout(tryConnect, 100)
+            return setTimeout(this[kConnect], 100)
           }
         } else if (err) {
-          return error(err)
+          return this[kDestroy](err)
         }
 
         // We're the leader now
-        fs.unlink(sockPath, function (err) {
-          if (guest.status !== 'open') {
+        fs.unlink(this[kSocketPath], (err) => {
+          if (this.status !== 'open') {
             return
           }
 
           if (err && err.code !== 'ENOENT') {
-            return error(err)
+            return this[kDestroy](err)
           }
 
           // Create host to expose db
           const host = new ManyLevelHost(db)
+          const self = this
           const sockets = new Set()
 
           // Start server for followers
@@ -82,62 +95,69 @@ module.exports = function (location, options) {
 
           // When guest db is closed, close server and db.
           // TODO: wait until listening?
-          guest.attachResource({ close: shutdown })
-          guest.attachResource(db)
+          this.attachResource({ close: shutdown })
+          this.attachResource(db)
 
           // Bypass socket
           // TODO: changes order of operations, because we only later flush previous operations (below)
-          guest.forward(db)
-          guest.emit('leader')
+          this.forward(db)
+          this.emit('leader')
 
           // Edge case if a 'leader' event listener closes the db
-          if (guest.status !== 'open') {
+          if (this.status !== 'open') {
             return
           }
 
-          server.listen(sockPath, onlistening)
-          server.on('error', error)
+          server.listen(this[kSocketPath], onlistening)
+          server.on('error', this[kDestroy])
 
           function shutdown (cb) {
             for (const sock of sockets) {
               sock.destroy()
             }
 
-            server.removeListener('error', error)
+            server.removeListener('error', self[kDestroy])
             server.close(cb)
           }
 
           function onlistening () {
             server.unref()
 
-            if (guest.status !== 'open' || guest.isFlushed()) {
+            if (self.status !== 'open' || self.isFlushed()) {
               return
             }
 
             // Connect to ourselves to flush pending requests
-            const sock = net.connect(sockPath)
+            const sock = net.connect(self[kSocketPath])
             const onflush = () => { sock.destroy() }
 
-            pipeline(sock, guest.createRpcStream(), sock, function (err) {
-              guest.removeListener('flush', onflush)
+            pipeline(sock, self.createRpcStream(), sock, function (err) {
+              self.removeListener('flush', onflush)
 
-              // Socket should only close because of a guest.close()
-              if (!guest.isFlushed() && guest.status === 'open') {
-                error(new ModuleError('Did not flush', { cause: err }))
+              // Socket should only close because of a self.close()
+              if (!self.isFlushed() && self.status === 'open') {
+                self[kDestroy](new ModuleError('Did not flush', { cause: err }))
               }
             })
 
-            guest.once('flush', onflush)
+            self.once('flush', onflush)
           }
         })
       })
     })
-  })
-
-  function error (err) {
-    // TODO: close?
-    guest.emit('error', err)
   }
 
-  return guest
+  [kDestroy] (err) {
+    // TODO: close?
+    this.emit('error', err)
+  }
+}
+
+/* istanbul ignore next */
+const socketPath = function (location) {
+  if (process.platform === 'win32') {
+    return '\\\\.\\pipe\\rave-level\\' + location
+  } else {
+    return path.join(location, 'rave-level.sock')
+  }
 }

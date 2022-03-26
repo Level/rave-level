@@ -3,10 +3,10 @@
 const test = require('tape')
 const { once } = require('events')
 const tempy = require('tempy')
-const level = require('..')
+const { RaveLevel } = require('..')
 
 test('self-flush', async function (t) {
-  const db = level(tempy.directory())
+  const db = new RaveLevel(tempy.directory())
 
   // Don't await
   db.put('abc', 'xyz')
@@ -20,7 +20,7 @@ test('self-flush', async function (t) {
 test('self-flush canceled by db.close()', function (t) {
   t.plan(3)
 
-  const db = level(tempy.directory())
+  const db = new RaveLevel(tempy.directory())
 
   db.put('abc', 'xyz').catch((err) => {
     t.is(err.code, 'LEVEL_DATABASE_NOT_OPEN')
@@ -36,7 +36,7 @@ test('self-flush canceled by db.close()', function (t) {
 test('self-flush canceled by db.close() with different timing', async function (t) {
   t.plan(2)
 
-  const db = level(tempy.directory())
+  const db = new RaveLevel(tempy.directory())
 
   db.put('abc', 'xyz').catch((err) => {
     t.is(err.code, 'LEVEL_DATABASE_NOT_OPEN')
@@ -52,7 +52,7 @@ test('self-flush canceled by db.close() with different timing', async function (
 test('immediate close', function (t) {
   t.plan(2)
 
-  const db = level(tempy.directory())
+  const db = new RaveLevel(tempy.directory())
 
   db.put('abc', 'xyz').catch((err) => {
     t.is(err.code, 'LEVEL_DATABASE_NOT_OPEN')
@@ -65,7 +65,7 @@ test('immediate close', function (t) {
 test('failure to open', function (t) {
   t.plan(1)
 
-  const db = level(tempy.directory(), { createIfMissing: false })
+  const db = new RaveLevel(tempy.directory(), { createIfMissing: false })
 
   db.once('error', function (err) {
     t.is(err.code, 'LEVEL_DATABASE_NOT_OPEN')

@@ -16,13 +16,13 @@
 ## Usage
 
 ```js
-const level = require('rave-level')
-const db = level('./db')
+const { RaveLevel } = require('rave-level')
+const db = new RaveLevel('./db')
 ```
 
 ## API
 
-### `db = level(location[, options])`
+### `db = new RaveLevel(location[, options])`
 
 The arguments are the same as [`level`](https://github.com/Level/level) (v8.0.0 and above) as is the API of the returned database, making `rave-level` a drop-in replacement for `level` for when you need to read and write to the given `location` from multiple processes simultaneously. It has one additional option:
 

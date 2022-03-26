@@ -2,14 +2,14 @@
 
 const test = require('tape')
 const tempy = require('tempy')
-const level = require('..')
+const { RaveLevel } = require('..')
 
 test('sublevel', function (t) {
   t.plan(9)
 
   const location = tempy.directory()
-  const db1 = level(location)
-  const db2 = level(location)
+  const db1 = new RaveLevel(location)
+  const db2 = new RaveLevel(location)
   const sub1 = db1.sublevel('test', { valueEncoding: 'json' })
   const sub2 = db2.sublevel('test')
   const obj = { test: Math.floor(Math.random() * 100000) }

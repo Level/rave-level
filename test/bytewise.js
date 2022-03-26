@@ -3,14 +3,14 @@
 const test = require('tape')
 const bytewise = require('bytewise')
 const tempy = require('tempy')
-const level = require('..')
+const { RaveLevel } = require('..')
 
 test('bytewise key encoding', function (t) {
   t.plan(7)
 
   const location = tempy.directory()
-  const db1 = level(location, { keyEncoding: bytewise, valueEncoding: 'json' })
-  const db2 = level(location, { keyEncoding: bytewise, valueEncoding: 'json' })
+  const db1 = new RaveLevel(location, { keyEncoding: bytewise, valueEncoding: 'json' })
+  const db2 = new RaveLevel(location, { keyEncoding: bytewise, valueEncoding: 'json' })
   const value = Math.floor(Math.random() * 100000)
 
   db1.put(['a'], value, function (err) {

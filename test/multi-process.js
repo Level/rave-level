@@ -4,11 +4,11 @@ const test = require('tape')
 const tempy = require('tempy')
 const { once } = require('events')
 const { fork } = require('child_process')
-const level = require('..')
+const { RaveLevel } = require('..')
 
 if (process.argv[2] === 'child') {
   const [location, key, value] = process.argv.slice(3)
-  const db = level(location)
+  const db = new RaveLevel(location)
 
   db.put(key, value, function (err) {
     if (err) throw err
@@ -32,6 +32,6 @@ if (process.argv[2] === 'child') {
     }
 
     t.same(await Promise.all(promises), exits)
-    t.same(await level(location).iterator().all(), entries)
+    t.same(await new RaveLevel(location).iterator().all(), entries)
   })
 }

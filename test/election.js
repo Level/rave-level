@@ -3,14 +3,14 @@
 const test = require('tape')
 const { once } = require('events')
 const tempy = require('tempy')
-const level = require('..')
+const { RaveLevel } = require('..')
 
 test('basic failover', async function (t) {
   const location = tempy.directory()
-  const db1 = level(location)
+  const db1 = new RaveLevel(location)
   await once(db1, 'leader')
 
-  const db2 = level(location)
+  const db2 = new RaveLevel(location)
   const values = new Array(100).fill(0).map((_, i) => String(i))
   const promises = values.map(v => db2.put(v.padStart(3, '0'), v))
 
@@ -35,7 +35,7 @@ test('failover election party', function (t) {
   })
 
   function open (key) {
-    const h = databases[key] = level(location, { valueEncoding: 'json' })
+    const h = databases[key] = new RaveLevel(location, { valueEncoding: 'json' })
     return h
   }
 

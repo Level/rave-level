@@ -4,14 +4,14 @@ const test = require('tape')
 const tempy = require('tempy')
 const path = require('path')
 const events = require('events')
-const level = require('..')
+const { RaveLevel } = require('..')
 
 test('two databases', function (t) {
   t.plan(5)
 
   const location = tempy.directory()
-  const db1 = level(location, { valueEncoding: 'json' })
-  const db2 = level(location, { valueEncoding: 'json' })
+  const db1 = new RaveLevel(location, { valueEncoding: 'json' })
+  const db2 = new RaveLevel(location, { valueEncoding: 'json' })
   const value = Math.floor(Math.random() * 100000)
 
   db1.put('a', value, function (err) {
@@ -33,8 +33,8 @@ test('two databases', function (t) {
 })
 
 test('two locations do not conflict', async function (t) {
-  const db1 = level(tempy.directory())
-  const db2 = level(tempy.directory())
+  const db1 = new RaveLevel(tempy.directory())
+  const db2 = new RaveLevel(tempy.directory())
 
   await db1.put('a', '1')
   await db2.put('a', '2')
@@ -47,13 +47,13 @@ test('two locations do not conflict', async function (t) {
 
 process.platform === 'win32' && test('cannot use nested location', async function (t) {
   const location = tempy.directory()
-  const db1 = level(location)
+  const db1 = new RaveLevel(location)
 
   // Currently emitted too soon so we need to wait a bit for server to be started
   await events.once(db1, 'leader')
   await new Promise(resolve => setTimeout(resolve, 500))
 
-  const db2 = level(path.join(location, 'foo'))
+  const db2 = new RaveLevel(path.join(location, 'foo'))
   const [err] = await events.once(db2, 'error')
 
   t.is(err.code, 'EACCES', 'failed to create named pipe server')
