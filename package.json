@@ -1,7 +1,7 @@
 {
   "name": "rave-level",
   "version": "0.0.0",
-  "description": "Open a leveldb handle multiple times",
+  "description": "Use a LevelDB database from multiple processes with seamless failover",
   "license": "MIT",
   "main": "index.js",
   "author": {

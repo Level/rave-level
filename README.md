@@ -1,7 +1,8 @@
 # rave-level
 
-Open a leveldb handle multiple times, transparently upgrading to use
-[`many-level`](https://github.com/Level/many-level) when more than 1 process try to use the same leveldb data directory at once and re-electing a new master when the primary unix socket goes down.
+**Use a LevelDB database from multiple processes with seamless failover.** Normally with [`level`](https://github.com/Level/level) opening the same location more than once would result in a [`LEVEL_LOCKED`](https://github.com/Level/abstract-level#errors) error. With `rave-level` the first process that succeeds in taking the LevelDB lock becomes the "leader" and creates a [`many-level`](https://github.com/Level/many-level) host to which other processes connect over a unix socket (Linux and Mac) or named pipe (Windows), transparently electing a new leader when it goes down. Pending database operations are then retried and iterators resumed at the last visited key as if nothing happened.
+
+> :pushpin: Which module should I use? What happened to [`level-party`](https://github.com/Level/party)? Head over to the [FAQ](https://github.com/Level/community#faq).
 
 [![level badge][level-badge]](https://github.com/Level/awesome)
 [![npm](https://img.shields.io/npm/v/rave-level.svg)](https://www.npmjs.com/package/rave-level)
@@ -12,96 +13,32 @@ Open a leveldb handle multiple times, transparently upgrading to use
 [![Common Changelog](https://common-changelog.org/badge.svg)](https://common-changelog.org)
 [![Donate](https://img.shields.io/badge/donate-orange?logo=open-collective&logoColor=fff)](https://opencollective.com/level)
 
-## Example
-
-Normally with [`level`](https://npmjs.org/package/level), when you try to open
-a database handle from more than one process you will get a locking error:
-
-```
-events.js:72
-        throw er; // Unhandled 'error' event
-              ^
-OpenError: IO error: lock /home/substack/projects/rave-level/example/data/LOCK: Resource temporarily unavailable
-    at /home/substack/projects/rave-level/node_modules/level/node_modules/level-packager/node_modules/levelup/lib/levelup.js:114:34
-```
-
-With `rave-level`, the database open will automatically drop down to using
-multilevel over a unix socket using metadata placed into the level data
-directory transparently.
-
-This means that if you have 2 programs, 1 that gets:
+## Usage
 
 ```js
 const level = require('rave-level')
-const db = level(__dirname + '/data', { valueEncoding: 'json' })
-
-setInterval(function () {
-  db.get('a', function (err, value) {
-    console.log('a=', value)
-  })
-}, 250)
+const db = level('./db')
 ```
-
-And 1 that puts:
-
-```js
-const level = require('rave-level')
-const db = level(__dirname + '/data', { valueEncoding: 'json' })
-
-const n = Math.floor(Math.random() * 100000)
-
-setInterval(function () {
-  db.put('a', n + 1)
-}, 1000)
-```
-
-and you start them up in any order, everything will just work! No more
-`IO error: lock` exceptions.
-
-```
-$ node put.js & sleep 0.2; node put.js & sleep 0.2; node put.js & sleep 0.2; node put.js & sleep 0.2
-[1] 3498
-[2] 3502
-[3] 3509
-[4] 3513
-$ node get.js
-a= 35340
-a= 31575
-a= 37639
-a= 58874
-a= 35341
-a= 31576
-$ node get.js
-a= 35344
-a= 31579
-a= 37643
-a= 58878
-a= 35345
-^C
-```
-
-Hooray!
-
-## Seamless failover
-
-rave-level does seamless failover. This means that if you create a read-stream
-and the leader goes down while you are reading that stream rave-level will resume your stream on the new leader.
-
-This disables [snapshot guarantees](https://github.com/Level/abstract-level#iterator) so if your app relies on this you should disable this by setting `opts.retry = false`:
-
-```js
-const db = level('./data', { retry: false }) // will not retry streams / gets / puts if the leader goes down
-```
-
-## Windows support
-
-`rave-level` works on Windows as well using named pipes.
 
 ## API
 
-### `db = level(...)`
+### `db = level(location[, options])`
 
-The arguments are exactly the same as [`level`](https://npmjs.org/package/level). You will sometimes get a real leveldb handle and sometimes get a `many-level` handle back in the response.
+The arguments are the same as [`level`](https://github.com/Level/level) (v8.0.0 and above) as is the API of the returned database, making `rave-level` a drop-in replacement for `level` for when you need to read and write to the given `location` from multiple processes simultaneously. It has one additional option:
+
+- `retry` (boolean, default `true`): if true, operations are retried upon connecting to a new leader. The `db` cannot provide [snapshot guarantees](https://github.com/Level/abstract-level#iterator) in this case because new iterators (and thus snapshots) will be created by the leader. If false, operations are aborted upon disconnect, which means to yield an error on e.g. `db.get()`.
+
+The database opens itself but (unlike `level`) cannot be re-opened once `db.close()` has been called. Calling `db.open()` would then yield a [`LEVEL_NOT_SUPPORTED`](https://github.com/Level/abstract-level#errors) error. Closing the database or exiting the process triggers re-election in other processes.
+
+### Events
+
+A database will only emit [events](https://github.com/Level/abstract-level#events) that are the result of its own operations (rather than other processes). There's one additional event, emitted when `db` has been elected as the leader:
+
+```js
+db.on('leader', function () {
+  console.log('I am the leader now')
+})
+```
 
 ## Install
 
