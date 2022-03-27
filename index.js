@@ -85,7 +85,6 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
 
           // Create host to expose db
           const host = new ManyLevelHost(db)
-          const self = this
           const sockets = new Set()
 
           // Start server for followers
@@ -98,54 +97,53 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
             })
           })
 
+          server.on('error', this[kDestroy])
+
+          const close = (cb) => {
+            for (const sock of sockets) {
+              sock.destroy()
+            }
+
+            server.removeListener('error', this[kDestroy])
+            server.close(cb)
+          }
+
           // When guest db is closed, close server and db.
-          this.attachResource({ close: shutdown })
+          this.attachResource({ close })
           this.attachResource(db)
 
           // Bypass socket, so that e.g. this.put() goes directly to db.put()
           // Note: changes order of operations, because we only later flush previous operations (below)
           this.forward(db)
 
-          server.listen(this[kSocketPath], onlistening)
-          server.on('error', this[kDestroy])
-
-          function shutdown (cb) {
-            for (const sock of sockets) {
-              sock.destroy()
-            }
-
-            server.removeListener('error', self[kDestroy])
-            server.close(cb)
-          }
-
-          function onlistening () {
+          server.listen(this[kSocketPath], () => {
             server.unref()
 
-            if (self.status !== 'open') {
+            if (this.status !== 'open') {
               return
             }
 
-            self.emit('leader')
+            this.emit('leader')
 
-            if (self.status !== 'open' || self.isFlushed()) {
+            if (this.status !== 'open' || this.isFlushed()) {
               return
             }
 
             // Connect to ourselves to flush pending requests
-            const sock = net.connect(self[kSocketPath])
+            const sock = net.connect(this[kSocketPath])
             const onflush = () => { sock.destroy() }
 
-            pipeline(sock, self.createRpcStream(), sock, function (err) {
-              self.removeListener('flush', onflush)
+            pipeline(sock, this.createRpcStream(), sock, (err) => {
+              this.removeListener('flush', onflush)
 
-              // Socket should only close because of a self.close()
-              if (!self.isFlushed() && self.status === 'open') {
-                self[kDestroy](new ModuleError('Did not flush', { cause: err }))
+              // Socket should only close because of a this.close()
+              if (!this.isFlushed() && this.status === 'open') {
+                this[kDestroy](new ModuleError('Did not flush', { cause: err }))
               }
             })
 
-            self.once('flush', onflush)
-          }
+            this.once('flush', onflush)
+          })
         })
       })
     })
