@@ -8,10 +8,10 @@
 [![npm](https://img.shields.io/npm/v/rave-level.svg)](https://www.npmjs.com/package/rave-level)
 [![Node version](https://img.shields.io/node/v/rave-level.svg)](https://www.npmjs.com/package/rave-level)
 [![Test](https://img.shields.io/github/workflow/status/Level/rave-level/Test?label=test)](https://github.com/Level/rave-level/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/codecov/c/github/Level/rave-level?label=&logo=codecov&logoColor=fff)](https://codecov.io/gh/Level/rave-level)
-[![Standard](https://img.shields.io/badge/standard-informational?logo=javascript&logoColor=fff)](https://standardjs.com)
+[![Coverage](https://img.shields.io/codecov/c/github/Level/rave-level?label=\&logo=codecov\&logoColor=fff)](https://codecov.io/gh/Level/rave-level)
+[![Standard](https://img.shields.io/badge/standard-informational?logo=javascript\&logoColor=fff)](https://standardjs.com)
 [![Common Changelog](https://common-changelog.org/badge.svg)](https://common-changelog.org)
-[![Donate](https://img.shields.io/badge/donate-orange?logo=open-collective&logoColor=fff)](https://opencollective.com/level)
+[![Donate](https://img.shields.io/badge/donate-orange?logo=open-collective\&logoColor=fff)](https://opencollective.com/level)
 
 ## Usage
 
@@ -28,13 +28,13 @@ The `location` argument is the same as in [`classic-level`](https://github.com/L
 
 - `keyEncoding` (string or object, default `'utf8'`): [encoding](https://github.com/Level/abstract-level#encodings) to use for keys
 - `valueEncoding` (string or object, default `'utf8'`): encoding to use for values
-- `retry` (boolean, default `true`): if true, operations are retried upon connecting to a new leader. The `db` does not have [snapshot guarantees](https://github.com/Level/abstract-level#iterator) in this case because new iterators and thus snapshots may be created by the leader. If false, operations are aborted upon disconnect, which means to yield an error on e.g. `db.get()`.
+- `retry` (boolean, default `true`): if true, operations are retried upon connecting to a new leader. This disables [snapshot guarantees](https://github.com/Level/abstract-level#iterator) because retries may implicitly use new snapshots. If false, operations are aborted upon disconnect, which means to yield an error on e.g. `db.get()`.
 
 The `RaveLevel` class extends `AbstractLevel` and thus follows the public API of [`abstract-level`](https://github.com/Level/abstract-level). As such, the rest of the API is documented in `abstract-level`. The database opens itself but (unlike other `abstract-level` implementations) cannot be re-opened once `db.close()` has been called. Calling `db.open()` would then yield a [`LEVEL_NOT_SUPPORTED`](https://github.com/Level/abstract-level#errors) error.
 
 ### Events
 
-A `rave-level` database will only emit [events](https://github.com/Level/abstract-level#events) that are the result of its own operations (rather than other processes). There's one additional event, emitted when `db` has been elected as the leader:
+A `RaveLevel` instance will only emit [events](https://github.com/Level/abstract-level#events) that are the result of its own operations (rather than other processes or instances). There's one additional event, emitted when `db` has been elected as the leader:
 
 ```js
 db.on('leader', function () {
