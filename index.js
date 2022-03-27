@@ -59,18 +59,29 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
       // Attempt to open db as leader
       const db = new ClassicLevel(this[kLocation], this[kOptions])
 
-      // TODO: refactor to unnest functions
+      // When guest db is closed, close db
+      this.attachResource(db)
+
       db.open((err) => {
-        // If already locked, another process became the leader
-        if (err && err.cause && err.cause.code === 'LEVEL_LOCKED') {
-          // TODO: This can cause an invisible retry loop that never completes
-          if (connected) {
-            return this[kConnect]()
+        if (err) {
+          // Normally called on close but we're throwing db away
+          this.detachResource(db)
+
+          // If already locked, another process became the leader
+          if (err.cause && err.cause.code === 'LEVEL_LOCKED') {
+            // TODO: This can cause an invisible retry loop that never completes
+            if (connected) {
+              return this[kConnect]()
+            } else {
+              return setTimeout(this[kConnect], 100)
+            }
           } else {
-            return setTimeout(this[kConnect], 100)
+            return this[kDestroy](err)
           }
-        } else if (err) {
-          return this[kDestroy](err)
+        }
+
+        if (this.status !== 'open') {
+          return
         }
 
         // We're the leader now
@@ -108,9 +119,8 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
             server.close(cb)
           }
 
-          // When guest db is closed, close server and db.
+          // When guest db is closed, close server
           this.attachResource({ close })
-          this.attachResource(db)
 
           // Bypass socket, so that e.g. this.put() goes directly to db.put()
           // Note: changes order of operations, because we only later flush previous operations (below)
