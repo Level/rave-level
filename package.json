@@ -1,6 +1,6 @@
 {
   "name": "rave-level",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Use a LevelDB database from multiple processes with seamless failover",
   "license": "MIT",
   "main": "index.js",
