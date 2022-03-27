@@ -64,7 +64,6 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
         // If already locked, another process became the leader
         if (err && err.cause && err.cause.code === 'LEVEL_LOCKED') {
           // TODO: This can cause an invisible retry loop that never completes
-          // and leads to memory leaks.
           if (connected) {
             return this[kConnect]()
           } else {
@@ -100,19 +99,12 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
           })
 
           // When guest db is closed, close server and db.
-          // TODO: wait until listening?
           this.attachResource({ close: shutdown })
           this.attachResource(db)
 
-          // Bypass socket
-          // TODO: changes order of operations, because we only later flush previous operations (below)
+          // Bypass socket, so that e.g. this.put() goes directly to db.put()
+          // Note: changes order of operations, because we only later flush previous operations (below)
           this.forward(db)
-          this.emit('leader')
-
-          // Edge case if a 'leader' event listener closes the db
-          if (this.status !== 'open') {
-            return
-          }
 
           server.listen(this[kSocketPath], onlistening)
           server.on('error', this[kDestroy])
@@ -128,6 +120,12 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
 
           function onlistening () {
             server.unref()
+
+            if (self.status !== 'open') {
+              return
+            }
+
+            self.emit('leader')
 
             if (self.status !== 'open' || self.isFlushed()) {
               return
@@ -154,8 +152,10 @@ exports.RaveLevel = class RaveLevel extends ManyLevelGuest {
   }
 
   [kDestroy] (err) {
-    // TODO: close?
-    this.emit('error', err)
+    if (this.status === 'open') {
+      // TODO: close?
+      this.emit('error', err)
+    }
   }
 }
 

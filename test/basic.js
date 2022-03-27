@@ -49,9 +49,7 @@ process.platform === 'win32' && test('cannot use nested location', async functio
   const location = tempy.directory()
   const db1 = new RaveLevel(location)
 
-  // Currently emitted too soon so we need to wait a bit for server to be started
   await events.once(db1, 'leader')
-  await new Promise(resolve => setTimeout(resolve, 500))
 
   const db2 = new RaveLevel(path.join(location, 'foo'))
   const [err] = await events.once(db2, 'error')
