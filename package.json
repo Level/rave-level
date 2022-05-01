@@ -30,7 +30,7 @@
     "readable-stream": "^3.6.0"
   },
   "devDependencies": {
-    "@voxpelli/tsconfig": "^3.1.0",
+    "@voxpelli/tsconfig": "^4.0.0",
     "bytewise": "^1.1.0",
     "dependency-check": "^4.1.0",
     "hallmark": "^4.1.0",
