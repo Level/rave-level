@@ -1,7 +1,7 @@
 'use strict'
 
 const test = require('tape')
-const tempy = require('tempy')
+const tempy = require('./util/tempy')
 const path = require('path')
 const events = require('events')
 const { RaveLevel } = require('..')

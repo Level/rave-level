@@ -2,7 +2,7 @@
 
 const test = require('tape')
 const bytewise = require('bytewise')
-const tempy = require('tempy')
+const tempy = require('./util/tempy')
 const { RaveLevel } = require('..')
 
 test('bytewise key encoding', function (t) {
