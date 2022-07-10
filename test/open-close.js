@@ -2,7 +2,7 @@
 
 const test = require('tape')
 const { once } = require('events')
-const tempy = require('tempy')
+const tempy = require('./util/tempy')
 const { RaveLevel } = require('..')
 
 test('self-flush', async function (t) {
